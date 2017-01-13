@@ -1,0 +1,19 @@
+{
+  "name": "node-hls",
+  "version": "1.0.0",
+  "description": "Process videos to be used for HLS.",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cgdibble/node-hls.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/cgdibble/node-hls/issues"
+  },
+  "homepage": "https://github.com/cgdibble/node-hls#readme"
+}
