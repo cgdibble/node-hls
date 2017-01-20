@@ -2,18 +2,26 @@
   "name": "node-hls",
   "version": "1.0.0",
   "description": "Process videos to be used for HLS.",
-  "main": "index.js",
+  "main": "./index.js",
   "scripts": {
+    "dev": "node ./index.js",
     "test": "jest"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/cgdibble/node-hls.git"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Charlie Dibble",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/cgdibble/node-hls/issues"
   },
-  "homepage": "https://github.com/cgdibble/node-hls#readme"
+  "homepage": "https://github.com/cgdibble/node-hls#readme",
+  "dependencies": {
+    "JSONStream": "^1.3.0",
+    "co": "^4.6.0",
+    "consistent-failables": "^1.0.5",
+    "jest": "^18.1.0",
+    "ramda": "^0.23.0"
+  }
 }
