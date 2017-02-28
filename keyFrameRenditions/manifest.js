@@ -1,4 +1,4 @@
-const R = require('ramda');
+const { map, pipe, append, mapAccum } = require('ramda');
 const { success, failure } = require('consistent-failables/failable')
 
 const manifestTopHalf = ['#EXTM3U',
@@ -8,7 +8,7 @@ const manifestTopHalf = ['#EXTM3U',
                         '#EXT-X-I-FRAMES-ONLY']
 
 const createManifest = (frames) => {
-  const manifest = R.pipe(addOpenTag, addVersionTag(4), findTargetDuration(frames), mediaSequence(0), iFrameOnlyTag)()
+  const manifest = pipe(addOpenTag, addVersionTag(4), findTargetDuration(frames), mediaSequence(0), iFrameOnlyTag)()
   const length = findVideoLength(frames) // preapply length to segmentDuration
   return success(manifest.join('\n'))
 }
@@ -27,17 +27,17 @@ const addVersionTag = (version = 4) => (manifestLines) => {
 }
 
 const findTargetDuration = (frames) => (manifest) => {
-  const largestDuration = R.pipe(extractTimes, getLargestDuration)(frames)
+  const largestDuration = pipe(extractTimes, getLargestDuration)(frames)
   manifest.push(`#EXT-X-TARGETDURATION:${largestDuration}`)
   return manifest
 }
 
-const append = (array, newValue) => {
-  return R.append(newValue, array)
+const myAppend = (array, newValue) => {
+  return append(newValue, array)
 }
 
 const getLargestDuration = (val) => {
-  const result = R.mapAccum(greaterThan, [0, 0])(val)
+  const result = mapAccum(greaterThan, [0, 0])(val)
   return extractDiffFromList(result)
 }
 
@@ -55,7 +55,7 @@ const extractDiffFromList = (list) => {
 }
 
 const extractTimes = (frames) => {
-  return R.map(extractFrameTimeAsInt, frames)
+  return map(extractFrameTimeAsInt, frames)
 }
 
 const extractFrameTimeAsInt = (frame) => {
@@ -67,30 +67,39 @@ const mediaSequence = val => manifest => {
   return manifest
 }
 
-const isolateSegmentDurations = (frames) => {
+const segmentDuration = (videoLength) => (currentFrame, nextFrame) => {
   /*
     https://developer.apple.com/library/content/technotes/tn2288/_index.html ---> "I-Frame Playlist"
     EXTINF field in keyframe stuff :::::>>>>> This is the time between the presentation time of the I-Frame in the media segment and the presentation time of the next I-Frame in the playlist
   */
   // next pkt_pts_time - current pkt_pts_time --> floats,  --> round(5)???
-  let durations = []
-  for(let i = 0; i < frames.length; i++) {
-    let currentDuration = parseFloat(frames[i].pkt_pts_time)
-    let duration
-    if (i + 1 === frames.length) {
-      duration = currentDuration
-    } else {
-      let nextFrame = parseFloat(frames[i + 1].pkt_pts_time)
-      duration = nextFrame - currentDuration
-    }
-    durations.push(duration)
-  }
-  return success(durations)
+  const currentTime = parseFloat(currentFrame.pkt_pts_time)
+  if (nextFrame === undefined) return videoLength - currentTime
+  let nextTime = parseFloat(nextFrame.pkt_pts_time)
+  return nextTime - currentTime
 }
 
 const iFrameOnlyTag = (manifest) => {
   manifest.push('#EXT-X-I-FRAMES-ONLY')
   return manifest
+}
+
+const buildKeyFrameBlock = (videoLength, frames) => (manifest) => {
+  frames.map((frame, i) => {
+    const duration = segmentDuration(videoLength)(frame, frames[i+1])
+    manifest.push(`#EXTINF:${duration}`)
+    const byteRange = frameByteRange(frame)
+    manifest.push(byteRange)
+    // push the .ts file into the next spot
+    // Is this .ts file the same as the video file one?? because it is byterange?
+    // --- This answer makes me think it is just the .ts for that video segment
+  })
+
+  return manifest
+}
+
+const frameByteRange = (frame) => {
+  return `#EXT-X-BYTERANGE:${frame.pkt_size}@${frame.pkt_pos}`
 }
 
 module.exports = {
@@ -102,10 +111,12 @@ module.exports = {
   extractFrameTimeAsInt,
   extractTimes,
   extractDiffFromList,
-  isolateSegmentDurations,
+  segmentDuration,
   findVideoLength,
   mediaSequence,
-  iFrameOnlyTag
+  iFrameOnlyTag,
+  buildKeyFrameBlock,
+  frameByteRange
 }
 
 // Create a series of functions, each of which adds a line to the m3u8 file, then pipe them together.

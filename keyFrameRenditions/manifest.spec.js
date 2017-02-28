@@ -10,9 +10,11 @@ const {
   extractFrameTimeAsInt,
   extractTimes,
   extractDiffFromList,
-  isolateSegmentDurations,
+  segmentDuration,
   mediaSequence,
-  iFrameOnlyTag
+  iFrameOnlyTag,
+  buildKeyFrameBlock,
+  frameByteRange
 } = require('./manifest')
 const { map } = require('ramda')
 const expectedManifestTopHalf = ['#EXTM3U', '#EXT-X-VERSION:4', '#EXT-X-TARGETDURATION:4', '#EXT-X-MEDIA-SEQUENCE:0', '#EXT-X-I-FRAMES-ONLY'].join('\n')
@@ -165,21 +167,54 @@ describe('manifest.js', () => {
     })
   })
 
-  describe.skip('segmentDuration()', () => {
-    it('should determine duration of each segment', () => {
-      const result = isolateSegmentDurations(iFrames)
-      // Need to do difference between iframe times, and the last one is the time from there to end of clip
-      // need to provide all the frames, or pass in the length of the vid (aka the pkt_pst_time of any vid frame)
-      equal(isSuccess(result), true)
-      equal(result.payload, map(num => parseFloat(num), ['0.00000', '2.000000', '4.000000']))
-    })
-  })
-
   describe('buildKeyFrameBlock()', () => {
     // iterate over the frames, and use that data to build the entry for each individual frame
     // this should be a pipe itself, so each "frame" gets data such as: EXTINF = segment duration, EXT-X-BYTERANGE = pkt_size@pkt_pos
+    const iFrames = [
+      {
+        pkt_dts_time: '0.000000',
+        pkt_pts_time: '0.000000',
+        pkt_pos: '40223',
+        pkt_size: '1222',
+        pict_type: 'I'
+      },
+      {
+        pkt_dts_time: '2.000000',
+        pkt_pts_time: '2.000000',
+        pkt_pos: '159174',
+        pkt_size: '4576',
+        pict_type: 'I'
+      }
+    ]
+
+    it('should add the EXTINF tag', () => {
+      const tag1 = '#EXTINF'
+      const tag2 = '#EXT-X-BYTERANGE'
+      const result = buildKeyFrameBlock(3, iFrames)([])
+      equal(result, [`${tag1}:2`, `${tag2}:${iFrames[0].pkt_size}@${iFrames[0].pkt_pos}`,  `${tag1}:1`, `${tag2}:${iFrames[1].pkt_size}@${iFrames[1].pkt_pos}`])
+    })
   })
 
+  describe('frameByteRange()', () => {
+    it('should assign byterange entry', () => {
+      const tag = '#EXT-X-BYTERANGE'
+      const frame = iFrames[0]
+      const result = frameByteRange(frame)
+      // EXT-X-BYTERANGE = pkt_size@pkt_pos
+      equal(result, `${tag}:${frame.pkt_size}@${frame.pkt_pos}`)
+    })
+  })
+
+  // #EXTINF:3.75,
+  // #EXT-X-BYTERANGE:999624@376
+  // media_w1616510757_ko_0.ts
+
+  describe('segmentDuration()', () => {
+    it('should determine duration of each segment', () => {
+      const result = segmentDuration(5)(iFrames[0], iFrames[1])
+      equal(result, 2)
+    })
+  })
 
   describe('findVideoLength()', () => {
     it('should return vid length', () => {
