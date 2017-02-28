@@ -2,7 +2,7 @@ const equal = require('assert').deepEqual
 const { isSuccess, isFailure } = require('consistent-failables/failable')
 const { isolateIFrames, isIFrame } = require('./generate')
 
-describe.only('generate.js', () => {
+describe('generate.js', () => {
   describe('isolateIFrames()', () => {
     it('should filter out I frames', () => {
       const iFrame = {
