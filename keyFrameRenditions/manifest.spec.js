@@ -22,7 +22,23 @@ const {
 const { map } = require('ramda')
 
 const videoFile = 'myVideo_1234.ts'
-const expectedManifestTopHalf = ['#EXTM3U', '#EXT-X-VERSION:4', '#EXT-X-TARGETDURATION:2', '#EXT-X-MEDIA-SEQUENCE:0', '#EXT-X-I-FRAMES-ONLY', `#EXTINF:2`, '#EXT-X-BYTERANGE:1222@40223', videoFile, `#EXTINF:2`, '#EXT-X-BYTERANGE:4576@159174', videoFile, `#EXTINF:1`, '#EXT-X-BYTERANGE:5503@224053', videoFile, '#EXT-X-ENDLIST'].join('\n')
+const expectedManifestTopHalf = [
+  '#EXTM3U',
+  '#EXT-X-VERSION:4',
+  '#EXT-X-TARGETDURATION:2',
+  '#EXT-X-MEDIA-SEQUENCE:0',
+  '#EXT-X-I-FRAMES-ONLY',
+  `#EXTINF:2`,
+  '#EXT-X-BYTERANGE:1222@40223',
+  videoFile,
+  `#EXTINF:2`,
+  '#EXT-X-BYTERANGE:4576@159174',
+  videoFile,
+  `#EXTINF:1`,
+  '#EXT-X-BYTERANGE:5503@224053',
+  videoFile,
+  '#EXT-X-ENDLIST'
+].join('\n')
 
 describe('manifest.js', () => {
   // EXT-X-BYTERANGE = pkt_size@pkt_pos
@@ -219,6 +235,8 @@ describe('manifest.js', () => {
       const result = buildKeyFrameBlock(videoFile, 3, iFrames)([])
       equal(result, [`${tag1}:2`, `${tag2}:${iFrames[0].pkt_size}@${iFrames[0].pkt_pos}`, videoFile, `${tag1}:1`, `${tag2}:${iFrames[1].pkt_size}@${iFrames[1].pkt_pos}`, videoFile])
     })
+
+    it('should handle float values')
   })
 
   describe('frameByteRange()', () => {
@@ -246,7 +264,7 @@ describe('manifest.js', () => {
     })
   })
 
-  describe('Have you accounted for this talk of 188bytes differences???', () => {
+  describe.skip('Have you accounted for this talk of 188bytes differences???', () => {
     /*
     As in here: https://gist.github.com/biomancer/8d139177f520b9dd3495
     mentioned here as well: http://stackoverflow.com/questions/23497782/how-to-create-byte-range-m3u8-playlist-for-hls
