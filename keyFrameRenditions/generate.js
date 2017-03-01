@@ -7,7 +7,10 @@ let JSONStream = require('JSONStream')
   const unencodedVideo = 'niceViewValley.MP4'
   const encodedVideo = 'encodedVid.mp4'
   const psVid = 'pluralsight1024x768Vid.mp4'
-  let ffprobe = childProcess.spawn('ffprobe', ['-print_format', 'json', '-select_streams', 'v', '-show_frames', '-show_entries', 'frame=pkt_dts_time,pict_type,pkt_size,pkt_pos', '-i', psVid])
+  /*
+    pkt_pts_time is used for determining segment length, so it fills the EXTINF field for each segment.
+  */
+  let ffprobe = childProcess.spawn('ffprobe', ['-print_format', 'json', '-select_streams', 'v', '-show_frames', '-show_entries', 'frame=pkt_dts_time,pict_type,pkt_size,pkt_pos,pkt_pts_time', '-i', psVid])
 
   ffprobe.once('close', function (code) {
     if (code) console.log("ERROR ERROR ERROR", code);
@@ -18,23 +21,12 @@ let JSONStream = require('JSONStream')
     .once('data', (data) => {
       // const iFrames =  isolateIFrames(data.frames)
       // console.log('iFrames::::', iFrames)
+      console.log('data::::', data)
     })
 // }
 
-const isolateIFrames = (frames) => {
-  return R.filter(isIFrame, frames)
-}
-
-const isIFrame = (frame) => {
-  if (frame.pict_type === 'I') return true
-  return false
-}
-
-
 module.exports = {
-  // extractFrames
-  isolateIFrames,
-  isIFrame
+
 }
 
 // Extract just i frame data

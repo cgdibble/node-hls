@@ -1,4 +1,4 @@
-const { map, pipe, append, mapAccum } = require('ramda');
+const { map, pipe, append, mapAccum, filter } = require('ramda');
 const { success, failure } = require('consistent-failables/failable')
 
 const manifestTopHalf = ['#EXTM3U',
@@ -7,9 +7,10 @@ const manifestTopHalf = ['#EXTM3U',
                         '#EXT-X-MEDIA-SEQUENCE:0',
                         '#EXT-X-I-FRAMES-ONLY']
 
-const createManifest = (frames) => {
-  const manifest = pipe(addOpenTag, addVersionTag(4), findTargetDuration(frames), mediaSequence(0), iFrameOnlyTag)()
+const createManifest = (videoFile, frames) => {
   const length = findVideoLength(frames) // preapply length to segmentDuration
+  const iFrames = isolateIFrames(frames)
+  const manifest = pipe(addOpenTag, addVersionTag(4), findTargetDuration(iFrames), mediaSequence(0), iFrameOnlyTag, buildKeyFrameBlock(videoFile, length, iFrames), closingTag)()
   return success(manifest.join('\n'))
 }
 
@@ -67,7 +68,7 @@ const mediaSequence = val => manifest => {
   return manifest
 }
 
-const segmentDuration = (videoLength) => (currentFrame, nextFrame) => {
+const segmentDuration = (videoLength, currentFrame, nextFrame) => {
   /*
     https://developer.apple.com/library/content/technotes/tn2288/_index.html ---> "I-Frame Playlist"
     EXTINF field in keyframe stuff :::::>>>>> This is the time between the presentation time of the I-Frame in the media segment and the presentation time of the next I-Frame in the playlist
@@ -84,15 +85,20 @@ const iFrameOnlyTag = (manifest) => {
   return manifest
 }
 
-const buildKeyFrameBlock = (videoLength, frames) => (manifest) => {
+const buildKeyFrameBlock = (videoFile, videoLength, frames) => (manifest) => {
   frames.map((frame, i) => {
-    const duration = segmentDuration(videoLength)(frame, frames[i+1])
+    const duration = segmentDuration(videoLength, frame, frames[i+1])
     manifest.push(`#EXTINF:${duration}`)
     const byteRange = frameByteRange(frame)
     manifest.push(byteRange)
+    manifest.push(videoFile)
     // push the .ts file into the next spot
     // Is this .ts file the same as the video file one?? because it is byterange?
     // --- This answer makes me think it is just the .ts for that video segment
+    // ------This step may need to occur AFTER ffmpeg generates manifest and we can grab the URIs
+    //        Once you mux/transmux whatever (make the TS file via ffmpeg hls), and you provide
+    //        uri to the singular TS file created (assuming you do byterange), and it will know
+    //        to make the proper byterange request on that file
   })
 
   return manifest
@@ -100,6 +106,20 @@ const buildKeyFrameBlock = (videoLength, frames) => (manifest) => {
 
 const frameByteRange = (frame) => {
   return `#EXT-X-BYTERANGE:${frame.pkt_size}@${frame.pkt_pos}`
+}
+
+const closingTag = (manifest) => {
+  manifest.push('#EXT-X-ENDLIST')
+  return manifest
+}
+
+const isolateIFrames = (frames) => {
+  return filter(isIFrame, frames)
+}
+
+const isIFrame = (frame) => {
+  if (frame.pict_type === 'I') return true
+  return false
 }
 
 module.exports = {
@@ -116,7 +136,10 @@ module.exports = {
   mediaSequence,
   iFrameOnlyTag,
   buildKeyFrameBlock,
-  frameByteRange
+  frameByteRange,
+  isolateIFrames,
+  isIFrame,
+  closingTag
 }
 
 // Create a series of functions, each of which adds a line to the m3u8 file, then pipe them together.
