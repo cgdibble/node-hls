@@ -19,8 +19,6 @@ let JSONStream = require('JSONStream')
   ffprobe.stdout
     .pipe(JSONStream.parse())
     .once('data', (data) => {
-      // const iFrames =  isolateIFrames(data.frames)
-      // console.log('iFrames::::', iFrames)
       console.log('data::::', data)
     })
 // }
@@ -28,8 +26,3 @@ let JSONStream = require('JSONStream')
 module.exports = {
 
 }
-
-// Extract just i frame data
-// will then using the timestamp as the #EXTINF:... field work?
-  // do those sync appropriately?
-// what are the implications of the byterange value being fixed?

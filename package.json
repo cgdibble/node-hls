@@ -1,10 +1,11 @@
 {
   "name": "node-hls",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Process videos to be used for HLS.",
   "main": "./index.js",
   "scripts": {
     "dev": "node ./index.js",
+    "deploy": "./deploy.sh",
     "test": "jest"
   },
   "repository": {

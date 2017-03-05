@@ -8,7 +8,7 @@ const manifestTopHalf = ['#EXTM3U',
                         '#EXT-X-I-FRAMES-ONLY']
 
 const createManifest = (videoFile, frames) => {
-  const length = findVideoLength(frames) // preapply length to segmentDuration
+  const length = findVideoLength(frames)
   const iFrames = isolateIFrames(frames)
   const manifest = pipe(addOpenTag, addVersionTag(4), findTargetDuration(iFrames), mediaSequence(0), iFrameOnlyTag, buildKeyFrameBlock(videoFile, length, iFrames), closingTag)()
   return success(manifest.join('\n'))
@@ -69,10 +69,6 @@ const mediaSequence = val => manifest => {
 }
 
 const segmentDuration = (videoLength, currentFrame, nextFrame) => {
-  /*
-    https://developer.apple.com/library/content/technotes/tn2288/_index.html ---> "I-Frame Playlist"
-    EXTINF field in keyframe stuff :::::>>>>> This is the time between the presentation time of the I-Frame in the media segment and the presentation time of the next I-Frame in the playlist
-  */
   // next pkt_pts_time - current pkt_pts_time --> floats,  --> round(5)???
   const currentTime = parseFloat(currentFrame.pkt_pts_time)
   if (nextFrame === undefined) return videoLength - currentTime
@@ -92,15 +88,7 @@ const buildKeyFrameBlock = (videoFile, videoLength, frames) => (manifest) => {
     const byteRange = frameByteRange(frame)
     manifest.push(byteRange)
     manifest.push(videoFile)
-    // push the .ts file into the next spot
-    // Is this .ts file the same as the video file one?? because it is byterange?
-    // --- This answer makes me think it is just the .ts for that video segment
-    // ------This step may need to occur AFTER ffmpeg generates manifest and we can grab the URIs
-    //        Once you mux/transmux whatever (make the TS file via ffmpeg hls), and you provide
-    //        uri to the singular TS file created (assuming you do byterange), and it will know
-    //        to make the proper byterange request on that file
   })
-
   return manifest
 }
 
@@ -141,5 +129,3 @@ module.exports = {
   isIFrame,
   closingTag
 }
-
-// Create a series of functions, each of which adds a line to the m3u8 file, then pipe them together.

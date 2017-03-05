@@ -209,8 +209,6 @@ describe('manifest.js', () => {
   })
 
   describe('buildKeyFrameBlock()', () => {
-    // iterate over the frames, and use that data to build the entry for each individual frame
-    // this should be a pipe itself, so each "frame" gets data such as: EXTINF = segment duration, EXT-X-BYTERANGE = pkt_size@pkt_pos
     const iFrames = [
       {
         pkt_dts_time: '0.000000',
