@@ -39,3 +39,4 @@ jspm_packages
 *.mp4
 *.m3u8
 *.ts
+.npmrc
