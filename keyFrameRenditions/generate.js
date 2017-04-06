@@ -1,7 +1,6 @@
 const R = require('ramda')
 const { success, failure } = require('consistent-failables/failable')
-const childProcess = require('child_process')
-let JSONStream = require('JSONStream')
+const exec = require('executive')
 
 // const extractFrames = (videoPath) => {
   const unencodedVideo = 'niceViewValley.MP4'
@@ -10,18 +9,14 @@ let JSONStream = require('JSONStream')
   /*
     pkt_pts_time is used for determining segment length, so it fills the EXTINF field for each segment.
   */
-  let ffprobe = childProcess.spawn('ffprobe', ['-print_format', 'json', '-select_streams', 'v', '-show_frames', '-show_entries', 'frame=pkt_dts_time,pict_type,pkt_size,pkt_pos,pkt_pts_time', '-i', psVid])
+  // let ffprobe = childProcess.spawn('ffprobe', ['-print_format', 'json', '-i', psVid]) //'-select_streams', 'v', '-show_frames', '-show_entries', 'frame=pkt_dts_time,pict_type,pkt_size,pkt_pos,pkt_pts_time', '-i', psVid])
 
-  ffprobe.once('close', function (code) {
-    if (code) console.log("ERROR ERROR ERROR", code);
-  })
+async function runFfprobe () {
+  const result = await exec(`ffprobe -print_format json -show_frames v -show_entries frame=pkt_dts_time,pict_type,pkt_size,pkt_pos,pkt_pts_time ${psVid}`)
+  console.log('result:', result);
+}
 
-  ffprobe.stdout
-    .pipe(JSONStream.parse())
-    .once('data', (data) => {
-      console.log('data::::', data)
-    })
-// }
+runFfprobe()
 
 module.exports = {
 

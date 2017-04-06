@@ -1,7 +1,12 @@
 const equal = require('assert').deepEqual
 const co = require('co')
 const { clone } = require('ramda')
-const { generateMasterManifest, findMasterTargetDuration, buildRenditionBlock } = require('./masterManifest')
+const { generateMasterManifest,
+        findMasterTargetDuration,
+        buildRenditionBlock,
+        ffprobeIfNecessary
+      } = require('./masterManifest')
+const { isSuccess } = require('consistent-failables/failable')
 
 describe('masterManifest.js', () => {
   const expectedManifest = [
@@ -89,6 +94,24 @@ describe('masterManifest.js', () => {
     const expectedBlock = ['#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=500000,RESOLUTION=480x270', '480x270.m3u8']
     const result = buildRenditionBlock([renditions[0]])([])
     equal(result, expectedBlock)
+  })
+
+  describe.skip('ffprobeIfNecessary()', () => {
+    // if no GOP info is provided on a rendition, then FFPROBE needs to be run
+    // to determine that info
+    //do this BEFORE piping along manifest
+    it('should return all necessary data about renditions', co.wrap(function * () {
+      const renditions = {
+        video: './keyFrameRenditions/pluralsight1024x768Vid.mp4', // should this be added? Or an error state returned
+        resolution: '1280x720',
+        bandwidth: 2000000,
+        file: '1280x720.m3u8',
+      }
+      const result = yield ffprobeIfNecessary([renditions])
+      console.log('result:', result)
+      equal(isSuccess(result), true)
+      equal(result.payload[0].gop !== undefined, true)
+    }))
   })
 })
 

@@ -1,5 +1,9 @@
 const { addOpenTag, addVersionTag, mediaSequence, closingTag } = require('./genericHeaders')
-const { filter, pipe } = require('ramda')
+const { filter, pipe, map } = require('ramda')
+const ffmpeg = require('fluent-ffmpeg')
+const co = require('co')
+const { success } = require('consistent-failables/failable')
+
 /*
   https://developer.apple.com/library/content/technotes/tn2288/_index.html
   Playlists that specify byte range media segments require protocol version 4.
@@ -7,9 +11,16 @@ const { filter, pipe } = require('ramda')
     and the media URI must reside on a separate line.
 */
 
-
 const generateMasterManifest = renditions => {
-  return pipe(addOpenTag, addVersionTag(4), findMasterTargetDuration(renditions), mediaSequence(0), buildRenditionBlock(renditions), closingTag)().join('\n')
+  return pipe(
+    addOpenTag,
+    addVersionTag(4),
+    //determine if GOP data provided, if not an FFPROBE command can be run
+    findMasterTargetDuration(renditions),
+    mediaSequence(0),
+    buildRenditionBlock(renditions),
+    closingTag
+  )().join('\n')
 }
 
 const findMasterTargetDuration = renditions => manifest => {
@@ -34,8 +45,20 @@ const buildRenditionBlock = renditions => manifest => {
   return manifest
 }
 
+const ffprobeIfNecessary = co.wrap(function * (renditions) {
+  return new Promise((reject, resolve) => {
+    ffmpeg.ffprobe(renditions[0].video, (err, data) => {
+      console.log('renditions[0].video:', renditions[0].video)
+      console.log('data:', data)
+      if (err) resolve(failure(err.toString()))
+      resolve(success(data))
+    })
+  })
+})
+
 module.exports = {
   generateMasterManifest,
   findMasterTargetDuration,
-  buildRenditionBlock
+  buildRenditionBlock,
+  ffprobeIfNecessary
 }
