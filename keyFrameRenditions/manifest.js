@@ -57,7 +57,7 @@ const buildKeyFrameBlock = (videoFile, videoLength, frames) => (manifest) => {
 }
 
 const frameByteRange = (frame) => {
-  return `#EXT-X-BYTERANGE:${frame.pkt_size}@${frame.pkt_pos}`
+  return `#EXT-X-BYTERANGE:${frame.pkt_size}@${frame.pkt_pos}` // ${nextFrame.pkt_pos - currentFrame.pkt_pos}@currentFrame.pkt.pos
 }
 
 const isolateIFrames = (frames) => {

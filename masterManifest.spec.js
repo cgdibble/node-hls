@@ -1,18 +1,21 @@
 const equal = require('assert').deepEqual
 const co = require('co')
-const { clone } = require('ramda')
+const { clone, map } = require('ramda')
 const { generateMasterManifest,
         findMasterTargetDuration,
         buildRenditionBlock,
-        ffprobeIfNecessary
+        getRenditionGOP,
+        getAppropriateBandwidth
       } = require('./masterManifest')
 const { isSuccess } = require('consistent-failables/failable')
 
-describe('masterManifest.js', () => {
+describe.only('masterManifest.js', function () {
+  jasmine.DEFAULT_TIMEOUT_INTERVAL = 10 * 1000
+
   const expectedManifest = [
     '#EXTM3U',
     '#EXT-X-VERSION:4',
-    '#EXT-X-TARGETDURATION:4',
+    '#EXT-X-TARGETDURATION:2',
     '#EXT-X-MEDIA-SEQUENCE:0',
     '#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=500000,RESOLUTION=480x270',
     '480x270.m3u8',
@@ -57,63 +60,74 @@ describe('masterManifest.js', () => {
 
   const renditions = [
     {
+      video: './keyFrameRenditions/pluralsight1024x768Vid.mp4', // should this be added? Or an error state returned
       resolution: '480x270',
-      bandwidth: 500000,
       file: '480x270.m3u8',
-      gop: 4
     },
     {
+      video: './keyFrameRenditions/pluralsight1024x768Vid.mp4', // should this be added? Or an error state returned
       resolution: '640x360',
-      bandwidth: 1000000,
       file: '640x360.m3u8',
-      gop: 4
     },
     {
+      video: './keyFrameRenditions/pluralsight1024x768Vid.mp4', // should this be added? Or an error state returned
       resolution: '1280x720',
-      bandwidth: 2000000,
       file: '1280x720.m3u8',
-      gop: 4
     },
   ]
 
-  it('should add header tags', () => {
-    const frames = clone(iFrames)
-    frames.push(bFrame)
-    const result = generateMasterManifest(renditions, frames)
-    equal(result, expectedManifest)
-  })
+  it('should add header tags', co.wrap(function * () {
+    const result = yield generateMasterManifest(renditions)
+    equal(isSuccess(result), true)
+  }))
 
   describe('findTargetDurationsOfVariants()', () => {
     it('should return target duration tag with correct duration', () => {
+      const gop = 2
+      const renditionsWithGop = map(r => r.gop = gop, renditions)
       const result = findMasterTargetDuration(renditions)([])
-      equal(result, [`#EXT-X-TARGETDURATION:4`])
+      equal(result, [`#EXT-X-TARGETDURATION:${gop}`])
     })
   })
 
   describe('buildRenditionBlock()', () => {
-    const expectedBlock = ['#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=500000,RESOLUTION=480x270', '480x270.m3u8']
-    const result = buildRenditionBlock([renditions[0]])([])
-    equal(result, expectedBlock)
+    const bandwidth = 500000
+    const rendition = renditions[0]
+    rendition.bandwidth = bandwidth
+
+    it('should build rendition line', () => {
+      const expectedBlock = [`#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=${bandwidth},RESOLUTION=480x270`, '480x270.m3u8']
+      const result = buildRenditionBlock([renditions[0]])([])
+      equal(result, expectedBlock)
+    })
   })
 
-  describe.skip('ffprobeIfNecessary()', () => {
-    // if no GOP info is provided on a rendition, then FFPROBE needs to be run
-    // to determine that info
-    //do this BEFORE piping along manifest
+  describe('getAppropriateBandwidth()', () => {
+    it('should sum the audio and video stream bite_rates', co.wrap(function * () {
+      const rendition = renditions[0]
+      const result = yield getAppropriateBandwidth(rendition)
+      equal(isSuccess(result), true)
+      equal(result.payload, 359595)
+    }))
+  })
+
+  describe('getRenditionGOP()', () => {
     it('should return all necessary data about renditions', co.wrap(function * () {
-      const renditions = {
+      const rendition = {
         video: './keyFrameRenditions/pluralsight1024x768Vid.mp4', // should this be added? Or an error state returned
         resolution: '1280x720',
         bandwidth: 2000000,
         file: '1280x720.m3u8',
       }
-      const result = yield ffprobeIfNecessary([renditions])
-      console.log('result:', result)
+      const result = yield getRenditionGOP(rendition)
       equal(isSuccess(result), true)
-      equal(result.payload[0].gop !== undefined, true)
+      equal(result.payload, 2)
     }))
   })
 })
+
+
+
 
 // http://stackoverflow.com/questions/30174236/creating-m3u8-file-that-points-to-other-m3u8-files
 // #EXTM3U
