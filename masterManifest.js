@@ -11,8 +11,8 @@ const exec = require('executive')
     and the media URI must reside on a separate line.
 */
 
-const generateMasterManifest = co.wrap(function * (renditions) {
-  const newRenditionsResult = yield updateRenditions(renditions)
+const generateMasterManifest = co.wrap(function * (renditionsArr) {
+  const newRenditionsResult = yield updateRenditions(renditionsArr)
   if (isFailure(newRenditionsResult)) return newRenditionsResult
   const updatedRenditions = newRenditionsResult.payload
   const result = pipe(
@@ -23,10 +23,12 @@ const generateMasterManifest = co.wrap(function * (renditions) {
     buildRenditionBlock(updatedRenditions),
     closingTag
   )().join('\n')
+  console.log('result:', result)
   return success(result)
 })
 
-const updateRenditions = co.wrap(function * (renditions) {
+const updateRenditions = co.wrap(function * (videos) {
+  const renditions = map(r => { return {video: r}}, videos)
   const addGopResult = yield genericRenditionUpdating(getRenditionGOP, 'gop', renditions)
   if (isFailure(addGopResult)) return addGopResult
   const goppedRenditions = addGopResult.payload

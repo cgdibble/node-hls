@@ -18,12 +18,12 @@ describe.only('masterManifest.js', function () {
     '#EXT-X-VERSION:4',
     '#EXT-X-TARGETDURATION:2',
     '#EXT-X-MEDIA-SEQUENCE:0',
-    '#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=500000,RESOLUTION=480x270',
-    '480x270.m3u8',
-    '#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=1000000,RESOLUTION=640x360',
-    '640x360.m3u8',
-    '#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=2000000,RESOLUTION=1280x720',
-    '1280x720.m3u8',
+    '#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=359595,RESOLUTION=1024x768',
+    '1024x768.m3u8',
+    '#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=249300,RESOLUTION=848x640',
+    '848x640.m3u8',
+    '#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=217209,RESOLUTION=640x480',
+    '640x480.m3u8',
     '#EXT-X-ENDLIST'
   ].join('\n')
 
@@ -60,33 +60,35 @@ describe.only('masterManifest.js', function () {
   }
 
   const renditions = [
-    {
-      video: './keyFrameRenditions/pluralsight1024x768Vid.mp4', // should this be added? Or an error state returned
-    },
-    {
-      video: './keyFrameRenditions/pluralsight1024x768Vid.mp4', // should this be added? Or an error state returned
-    },
-    {
-      video: './keyFrameRenditions/pluralsight1024x768Vid.mp4', // should this be added? Or an error state returned
-    },
+      './keyFrameRenditions/pluralsight1024x768Vid.mp4',
+      './keyFrameRenditions/ps848x640.mp4',
+      './keyFrameRenditions/ps640x480.mp4',
   ]
 
   it('should add header tags', co.wrap(function * () {
     const result = yield generateMasterManifest(renditions)
     equal(isSuccess(result), true)
+    equal(result.payload, expectedManifest)
   }))
 
-  describe('findTargetDurationsOfVariants()', () => {
+  describe('findMasterTargetDuration()', () => {
     it('should return target duration tag with correct duration', () => {
       const gop = 2
-      const renditionsWithGop = map(r => r.gop = gop, renditions)
-      const result = findMasterTargetDuration(renditions)([])
+      const renditionsWithGop = map(r => {
+        return {
+          video: r,
+          gop
+        }
+      }, renditions)
+      const result = findMasterTargetDuration(renditionsWithGop)([])
       equal(result, [`#EXT-X-TARGETDURATION:${gop}`])
     })
   })
 
   describe('buildRenditionBlock()', () => {
-    const rendition = renditions[0]
+    const rendition = {
+      video: renditions[0]
+    }
     const height = 768
     const width = 1024
     rendition.dimensions = { width, height }
@@ -95,14 +97,14 @@ describe.only('masterManifest.js', function () {
     rendition.bandwidth = bandwidth
     it('should build rendition line', () => {
       const expectedBlock = [`#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=${bandwidth},RESOLUTION=${resolution}`, `${resolution}.m3u8`]
-      const result = buildRenditionBlock([renditions[0]])([])
+      const result = buildRenditionBlock([rendition])([])
       equal(result, expectedBlock)
     })
   })
 
   describe('getAppropriateBandwidth()', () => {
     it('should sum the audio and video stream bite_rates', co.wrap(function * () {
-      const rendition = renditions[0]
+      const rendition = { video: renditions[0] }
       const result = yield getAppropriateBandwidth(rendition)
       equal(isSuccess(result), true)
       equal(result.payload, 359595)
@@ -113,7 +115,7 @@ describe.only('masterManifest.js', function () {
     const height = 768
     const width = 1024
     it('should extract rendition dimensions', co.wrap(function * () {
-      const rendition = renditions[0]
+      const rendition = { video: renditions[0] }
       const result = yield getRenditionSize(rendition)
       equal(isSuccess(result), true)
       equal(result.payload, { height, width })
@@ -122,12 +124,7 @@ describe.only('masterManifest.js', function () {
 
   describe('getRenditionGOP()', () => {
     it('should return all necessary data about renditions', co.wrap(function * () {
-      const rendition = {
-        video: './keyFrameRenditions/pluralsight1024x768Vid.mp4', // should this be added? Or an error state returned
-        resolution: '1280x720',
-        bandwidth: 2000000,
-        file: '1280x720.m3u8',
-      }
+      const rendition = { video: renditions[0] }
       const result = yield getRenditionGOP(rendition)
       equal(isSuccess(result), true)
       equal(result.payload, 2)
