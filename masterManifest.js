@@ -32,7 +32,10 @@ const updateRenditions = co.wrap(function * (renditions) {
   const goppedRenditions = addGopResult.payload
   const addBandwidthResult = yield genericRenditionUpdating(getAppropriateBandwidth, 'bandwidth', goppedRenditions)
   if (isFailure(addBandwidthResult)) return addBandwidthResult
-  return addBandwidthResult
+  const renditionsToSize = addBandwidthResult.payload
+  const getSizeResult = yield genericRenditionUpdating(getRenditionSize, 'dimensions', renditionsToSize)
+  if (isFailure(getSizeResult)) return getSizeResult
+  return getSizeResult
 })
 
 
@@ -51,9 +54,11 @@ const findMasterTargetDuration = renditions => manifest => {
 
 const buildRenditionBlock = renditions => manifest => {
   renditions.map(r => {
+    const { width, height } = r.dimensions
+    const resolution = `${width}x${height}`
     let programId = r.programId || 1
-    manifest.push(`#EXT-X-STREAM-INF:PROGRAM-ID=${programId},BANDWIDTH=${r.bandwidth},RESOLUTION=${r.resolution}`)
-    manifest.push(r.file)
+    manifest.push(`#EXT-X-STREAM-INF:PROGRAM-ID=${programId},BANDWIDTH=${r.bandwidth},RESOLUTION=${resolution}`)
+    manifest.push(`${resolution}.m3u8`)
   })
   return manifest
 }
@@ -114,10 +119,20 @@ const getRenditionGOP = co.wrap(function * (rendition) {
   return success(highestGop)
 })
 
+const getRenditionSize = co.wrap(function * (rendition) {
+  const { video } = rendition
+  const ffprobeResult = yield exec.quiet(`ffprobe -print_format json -show_streams ${video}`)
+  const parsedData = JSON.parse(ffprobeResult.stdout)
+  const videoStream = parsedData.streams[0]
+  const { height, width } = videoStream
+  return success({ width, height })
+})
+
 module.exports = {
   generateMasterManifest,
   findMasterTargetDuration,
   buildRenditionBlock,
   getRenditionGOP,
-  getAppropriateBandwidth
+  getAppropriateBandwidth,
+  getRenditionSize
 }

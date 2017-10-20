@@ -5,7 +5,8 @@ const { generateMasterManifest,
         findMasterTargetDuration,
         buildRenditionBlock,
         getRenditionGOP,
-        getAppropriateBandwidth
+        getAppropriateBandwidth,
+        getRenditionSize
       } = require('./masterManifest')
 const { isSuccess } = require('consistent-failables/failable')
 
@@ -61,18 +62,12 @@ describe.only('masterManifest.js', function () {
   const renditions = [
     {
       video: './keyFrameRenditions/pluralsight1024x768Vid.mp4', // should this be added? Or an error state returned
-      resolution: '480x270',
-      file: '480x270.m3u8',
     },
     {
       video: './keyFrameRenditions/pluralsight1024x768Vid.mp4', // should this be added? Or an error state returned
-      resolution: '640x360',
-      file: '640x360.m3u8',
     },
     {
       video: './keyFrameRenditions/pluralsight1024x768Vid.mp4', // should this be added? Or an error state returned
-      resolution: '1280x720',
-      file: '1280x720.m3u8',
     },
   ]
 
@@ -91,12 +86,15 @@ describe.only('masterManifest.js', function () {
   })
 
   describe('buildRenditionBlock()', () => {
-    const bandwidth = 500000
     const rendition = renditions[0]
+    const height = 768
+    const width = 1024
+    rendition.dimensions = { width, height }
+    const resolution = `${width}x${height}`
+    const bandwidth = 500000
     rendition.bandwidth = bandwidth
-
     it('should build rendition line', () => {
-      const expectedBlock = [`#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=${bandwidth},RESOLUTION=480x270`, '480x270.m3u8']
+      const expectedBlock = [`#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=${bandwidth},RESOLUTION=${resolution}`, `${resolution}.m3u8`]
       const result = buildRenditionBlock([renditions[0]])([])
       equal(result, expectedBlock)
     })
@@ -108,6 +106,17 @@ describe.only('masterManifest.js', function () {
       const result = yield getAppropriateBandwidth(rendition)
       equal(isSuccess(result), true)
       equal(result.payload, 359595)
+    }))
+  })
+
+  describe('getRenditionSize()', () => {
+    const height = 768
+    const width = 1024
+    it('should extract rendition dimensions', co.wrap(function * () {
+      const rendition = renditions[0]
+      const result = yield getRenditionSize(rendition)
+      equal(isSuccess(result), true)
+      equal(result.payload, { height, width })
     }))
   })
 
