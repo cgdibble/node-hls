@@ -1,6 +1,6 @@
 {
   "name": "node-hls",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Process videos to be used for HLS.",
   "main": "./index.js",
   "scripts": {
