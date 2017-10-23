@@ -23,7 +23,6 @@ const generateMasterManifest = co.wrap(function * (renditionsArr) {
     buildRenditionBlock(updatedRenditions),
     closingTag
   )().join('\n')
-  console.log('result:', result)
   return success(result)
 })
 

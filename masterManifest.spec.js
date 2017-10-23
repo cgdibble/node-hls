@@ -10,7 +10,7 @@ const { generateMasterManifest,
       } = require('./masterManifest')
 const { isSuccess } = require('consistent-failables/failable')
 
-describe.only('masterManifest.js', function () {
+describe('masterManifest.js', function () {
   jasmine.DEFAULT_TIMEOUT_INTERVAL = 10 * 1000
 
   const expectedManifest = [
